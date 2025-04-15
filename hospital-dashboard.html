@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Hospital Dashboard</title>
+ <link rel="stylesheet" href="styles.css" />
+ <style>
+ #formResponses{
+	 
+ display: flex;
+    gap: 20px;
+    justify-content: flex-start;
+    padding: 20px;
+    flex-wrap: wrap;
+}
+.response-box{
+ 
+  background-color: #f3f3f3;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  min-width: 250px;
+  max-width: 300px;
+}
+ .but{
+ 
+  height:40px; 
+  width:30%; 
+  color:#346189; 
+  background-color:#ccdfed;
+  border-radius:10px;
+  font-weight: 700;
+  border:none}
+	 
+	 
+	 
+	 </style>
+</head>
+<body>
+	 <header>
+    <div class="header-left">
+      <svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r="30" fill="#4CAF50" stroke="#009688" stroke-width="4"/>
+        <rect x="28" y="12" width="8" height="40" fill="#fff"/>
+        <rect x="12" y="28" width="40" height="8" fill="#fff"/>
+      </svg>
+      <span class="hospital-name">Hospital Care</span>
+    </div>
+    <div class="header-right">
+      <a href="index.html" class="nav-btn">Home</a>
+      <a href="register.html" class="nav-btn">Register</a>
+      <a href="signin.html" class="nav-btn">Sign in</a>
+      <a href="account.html" class="nav-btn">Account</a>
+      <a href="about.html" class="nav-btn">About</a>
+      <a href="contact.html" class="nav-btn">Contact</a>
+    </div>
+  </header>
+  <div class="form-section">
+  <h2>Hospital Dashboard</h2>
+  <p>Update Bed Availability:</p>
+
+  <form id="bedForm" >
+    <label class="bedsAvailable">Available Beds:</label>
+    <input type="number"  class="icubeds" placeholder="ICU beds" required />
+    <input type="number"  class="venbeds" placeholder="Ventileted beds" required />
+    <input type="number" class="norbeds" placeholder="Normal beds" required />
+     <label class="bedsAvailable">Available doctors:</label>
+    
+    <input type="text" class="doc1" placeholder="Name of doctor" required />
+    <input type="text" class="doc2" placeholder="Name of doctor" required />
+    <input type="text" class="doc3" placeholder="Name of doctor" required />
+    <button type="submit">Update</button>
+  </form>
+
+  <div id="updateMessage"></div>
+  <div id="updatevalue"></div>
+</div>
+
+<h2> 	Appointment Requests:</h2>
+<section id="formResponses">
+  
+</section>
+
+  <script>
+  const loggedIn = JSON.parse(localStorage.getItem("loggedInUser"));
+  if (!loggedIn || loggedIn.role !== "hospital") {
+    window.location.href = "signin.html";
+  }
+
+  document.getElementById("bedForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    const icu = document.querySelector(".icubeds").value;
+    const ven = document.querySelector(".venbeds").value;
+    const nor = document.querySelector(".norbeds").value;
+    
+    const doc1 = document.querySelector(".doc1").value;
+    const doc2 = document.querySelector(".doc2").value;
+    const doc3 = document.querySelector(".doc3").value;
+
+    loggedIn.beds = { icubeds: icu, ventiletedbeds: ven, normalbeds: nor };
+    loggedIn.doctors = { doctor1: doc1, doctor2: doc2, doctor3: doc3 };
+    localStorage.setItem("loggedInUser", JSON.stringify(loggedIn));
+
+    let users = JSON.parse(localStorage.getItem("users")) || [];
+    users = users.map(u => u.email === loggedIn.email ? loggedIn : u);
+    localStorage.setItem("users", JSON.stringify(users));
+
+    document.getElementById("updateMessage").textContent = " updated!";
+  });
+
+  const corsProxy = "https://api.allorigins.win/raw?url=";
+  const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSLfphu1MZhA3sJPrpszcrANg5z_45MU7I3f3vME12gll0zGaFkcF2OfEaMOhhnV019JOY9GDE5Lw0t/pub?output=csv";
+
+  const hospital = JSON.parse(localStorage.getItem("loggedInUser"));
+  const hospitalName = hospital.name;
+
+fetch(corsProxy + encodeURIComponent(sheetUrl))
+  .then(res => res.text())
+  .then(csvText => {
+    const rows = csvText.split("\n").map(row => row.split(","));
+    const headers = rows[0];
+    const data = rows.slice(1);
+
+    const filtered = data.filter(row => row[2]?.trim() === hospitalName && row[9]?.trim() !== "Confirmed");
+
+    const container = document.getElementById("formResponses");
+
+    if (filtered.length === 0) {
+      container.innerHTML = `<p>No responses found.</p>`;
+      return;
+    }
+
+    filtered.forEach(row => {
+      const patientName = row[3];
+      const contact = row[4];
+      const illness = row[5];
+      const date = row[6];
+      const time = row[7];
+
+      const div = document.createElement("div");
+      div.className = "response-box";
+      div.innerHTML = `
+        <p><strong>Patient Name:</strong> ${patientName}</p>
+        <p><strong>Contact:</strong> ${contact}</p>
+        <p><strong>Illness:</strong> ${illness}</p>
+        <p><strong>Date:</strong> ${date}</p>
+        <p><strong>Time:</strong> ${time}</p>
+        <button class="but">Accept</button>
+      `;
+      container.appendChild(div);
+
+   const button = div.querySelector(".but");
+button.addEventListener("click", () => {
+  const formData = new URLSearchParams();
+  formData.append("hospital", hospitalName);
+  formData.append("patient", patientName);
+  formData.append("status", "Confirmed");
+  const proxyUrl = "https://corsproxy.io/?";
+
+
+  fetch(proxyUrl + encodeURIComponent("https://script.google.com/macros/s/AKfycbxaWzLsVyxzgChELOSeDat8bnN_LEh_HbufwSxQVBt42OEWEdPwyc7eDPj6Zwp2Vl4/exec"), {
+  method: "POST",
+  body: formData
+
+  })
+    .then(res => res.text())
+    .then(response => {
+      if (response === "Confirmed") {
+        button.textContent = "Confirmed";
+        button.disabled = true;
+        button.style.backgroundColor = "#4CAF50";
+        div.remove();
+      } else {
+        alert("Failed to confirm.");
+      }
+    })
+    .catch(error => {
+      console.error("Fetch failed:", error);
+      alert("Error occurred.");
+    });
+});
+
+    });
+  })
+  .catch(err => {
+    console.error("Error fetching sheet:", err);
+    document.getElementById("formResponses").innerHTML = "Unable to load data.";
+  });
+
+</script>
+
+
+</body>
+</html>
