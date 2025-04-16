@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account - Our Hospital</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+	  .but{
+  position:relative; 
+  left:20vh; 
+  height:40px; 
+  width:50%; 
+  color:#346189; 
+  border-radius:10px;
+  font-weight: 600;
+  border:none}
+  
+  .box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+  padding: 20px;
+}
+
+.appoinment{
+ 
+  background-color: #f3f3f3;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  min-width: 250px;
+  max-width: 300px;
+  cursor:pointer;
+  
+}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r="30" fill="#4CAF50" stroke="#009688" stroke-width="4"/>
+        <rect x="28" y="12" width="8" height="40" fill="#fff"/>
+        <rect x="12" y="28" width="40" height="8" fill="#fff"/>
+      </svg>
+      <span class="hospital-name">Hospital Care</span>
+    </div>
+    <div class="header-right">
+      <a href="index.html" class="nav-btn">Home</a>
+      <a href="register.html" class="nav-btn">Register</a>
+      <a href="signin.html" class="nav-btn">Sign in</a>
+      <a href="account.html" class="nav-btn">Account</a>
+      <a href="about.html" class="nav-btn">About</a>
+      <a href="contact.html" class="nav-btn">Contact</a>
+    </div>
+  </header>
+  
+  <section class="account-section">
+    <h2>Your Account</h2>
+    <div id="accountInfo"></div>
+
+  
+  <button  class="but"  onclick="logout()" >Logout</button>
+</section>
+
+<h2>Appointment status:	 </h2>
+<section class="box">
+  <div class="appoinment"></div>
+</section>
+<script>
+  const corsProxy = "https://api.allorigins.win/raw?url=";
+  const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSLfphu1MZhA3sJPrpszcrANg5z_45MU7I3f3vME12gll0zGaFkcF2OfEaMOhhnV019JOY9GDE5Lw0t/pub?output=csv";
+
+  const patient = JSON.parse(localStorage.getItem("loggedInUser"));
+  const confirmed = JSON.parse(localStorage.getItem("confirmedAppointments")) || [];
+
+  const patientName = patient.name;
+  const patientMobile = patient.mobile;
+
+  fetch(corsProxy + encodeURIComponent(sheetUrl))
+    .then(res => res.text())
+    .then(csvText => {
+      const rows = csvText.split("\n").map(row => row.split(","));
+      const headers = rows[0];
+      const data = rows.slice(1);
+
+      const filtered = data.filter(row => row[3]?.trim() === patientName);
+
+      const container = document.querySelector(".box");
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<p>No appointment found.</p>`;
+        return;
+      }
+
+      filtered.forEach(row => {
+        const HospitalName = row[2]?.trim();
+        const illness = row[5]?.trim();
+        const date = row[6]?.trim();
+        const time = row[7]?.trim();
+
+        // Check if this specific appointment is confirmed
+        const isConfirmed = confirmed.some(a =>
+          a.hospital === HospitalName &&
+          a.mobile === patientMobile &&
+          a.date === date &&
+          a.time === time
+        );
+     let line=" ";
+        const status = isConfirmed ? "Confirmed" : "Pending ";
+        if (status == "Confirmed"){
+			 let randomId = 'AP-' + Math.floor(Math.random() * 90000 + 10000);
+                line = `<p><strong>ID :</strong> ${randomId}</p>`
+      }
+
+        const div = document.createElement("div");
+        div.className = "appoinment";
+        div.innerHTML = `
+          <p><strong>Hospital Name:</strong> ${HospitalName}</p>
+          <p><strong>Illness:</strong> ${illness}</p>
+          <p><strong>Date:</strong> ${date}</p>
+          <p><strong>Time:</strong> ${time}</p>
+          <p><strong>Appointment Status:</strong> <span style="color:green; font-weight:bold;">${status}</span></p>
+          ${line}
+
+        `;
+        container.appendChild(div);
+      });
+    });
+
+  function logout() {
+    localStorage.removeItem("loggedInUser");
+    window.location.href = "signin.html";
+  }
+
+  function loadAccountFromLocalStorage() {
+    const loggedIn = JSON.parse(localStorage.getItem("loggedInUser"));
+
+    if (!loggedIn) {
+      // Redirect if not signed in
+      window.location.href = "signin.html";
+      return;
+    }
+
+    // Display info based on role
+    let html = `
+      <p><strong>Name:</strong> ${loggedIn.name}</p>
+      <p><strong>Email:</strong> ${loggedIn.email}</p>
+      <p><strong>Role:</strong> ${loggedIn.role}</p>
+    `;
+
+    if (loggedIn.role === "patient") {
+      html += `
+        <p><strong>Mobile:</strong> ${loggedIn.mobile}</p>
+        <p><strong>Age:</strong> ${loggedIn.age}</p>
+        <p><strong>Illness:</strong> ${loggedIn.illness}</p>
+      `;
+    } else if (loggedIn.role === "hospital") {
+      window.location.href = "hospital-dashboard.html";
+    }
+
+    document.getElementById("accountInfo").innerHTML = html;
+  }
+
+  loadAccountFromLocalStorage();
+</script>
+
+
+</body>
+</html>
